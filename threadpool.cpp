@@ -4,13 +4,13 @@ threadpool_t *threadpool_create(int thread_count, int queue_size, int flags)
 {
     threadpool_t *pool;
     int i;
-    //(void) flags;
     do
     {
         if(thread_count <= 0 || thread_count > MAX_THREADS || queue_size <= 0 || queue_size > MAX_QUEUE) {
             return NULL;
         }
     
+        /*线程池*/
         if((pool = (threadpool_t *)malloc(sizeof(threadpool_t))) == NULL) 
         {
             break;
