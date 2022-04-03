@@ -21,7 +21,6 @@ ssize_t readn(int fd, void *buff, size_t n)
             }
             else if (errno == EAGAIN)//非阻塞系统调用，连续做read操作而没有数据可读
             {
-                printf("没有断开，只是EAGAIN\n");
                 return readSum;
             }
             else
@@ -30,7 +29,6 @@ ssize_t readn(int fd, void *buff, size_t n)
             }  
         }
         else if (nread == 0){
-            printf("断开了%d\n",readSum);
             break;
         }
         readSum += nread;

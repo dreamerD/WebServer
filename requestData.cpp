@@ -125,7 +125,6 @@ void requestData::handleRequest()
 {
     char buff[MAX_BUFF];
     bool isError = false;
-    sleep(5);
     while (true)
     {
         int read_num = readn(fd, buff, MAX_BUFF);
@@ -145,7 +144,6 @@ void requestData::handleRequest()
             perror("read_num == 0");
             if (errno == EAGAIN)
             {
-                cout<<"again!"<<againTimes<<endl;
                 if (againTimes > AGAIN_MAX_TIMES)
                     isError = true;
                 else
@@ -154,7 +152,6 @@ void requestData::handleRequest()
             // else if (errno != 0)
             //     isError = true;
             else{
-                printf("这个socket已经被对方关闭\n");
                 isError = true;
             }
             break;
@@ -266,7 +263,6 @@ void requestData::handleRequest()
     myTimerQueue.push(mtimer);
     pthread_mutex_unlock(&qlock);
 
-    sleep(3);
     __uint32_t _epo_event = EPOLLIN | EPOLLET | EPOLLONESHOT;
     int ret = epoll_mod(epollfd, fd, static_cast<void*>(this), _epo_event);
     if (ret < 0)
@@ -581,7 +577,7 @@ void requestData::handleError(int fd, int err_num, string short_msg)
     body_buff += "<html><title>TKeed Error</title>";
     body_buff += "<body bgcolor=\"ffffff\">";
     body_buff += to_string(err_num) + short_msg;
-    body_buff += "<hr><em> LinYa's Web Server</em>\n</body></html>";
+    body_buff += "<hr><em> Ding Yongjie's Web Server</em>\n</body></html>";
 
     header_buff += "HTTP/1.1 " + to_string(err_num) + short_msg + "\r\n";
     header_buff += "Content-type: text/html\r\n";
