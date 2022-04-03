@@ -16,7 +16,7 @@ const int MAX_BUFF = 4096;
 // 有请求出现但是读不到数据,可能是Request Aborted,
 // 或者来自网络的数据没有达到等原因，
 //对这样的请求尝试超过一定的次数就抛弃
-const int AGAIN_MAX_TIMES = 200;
+const int AGAIN_MAX_TIMES = 2;
 
 
 /*等待注释*/
@@ -106,9 +106,9 @@ public:
 
 struct mytimer
 {
-    bool deleted;
-    size_t expired_time;
-    requestData *request_data;
+    bool deleted; // 标记是否删除
+    size_t expired_time; //ms数
+    requestData *request_data; //pointer to reqeustData
 
     mytimer(requestData *_request_data, int timeout);
     ~mytimer();

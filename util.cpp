@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 
 ssize_t readn(int fd, void *buff, size_t n)
 {
@@ -15,10 +16,12 @@ ssize_t readn(int fd, void *buff, size_t n)
     {
         if ((nread = read(fd, ptr, nleft)) < 0)
         {
-            if (errno == EINTR)
+            if (errno == EINTR){//慢系统调用，执行信号处理函数
                 nread = 0;
-            else if (errno == EAGAIN)
+            }
+            else if (errno == EAGAIN)//非阻塞系统调用，连续做read操作而没有数据可读
             {
+                printf("没有断开，只是EAGAIN\n");
                 return readSum;
             }
             else
@@ -26,8 +29,10 @@ ssize_t readn(int fd, void *buff, size_t n)
                 return -1;
             }  
         }
-        else if (nread == 0)
+        else if (nread == 0){
+            printf("断开了%d\n",readSum);
             break;
+        }
         readSum += nread;
         nleft -= nread;
         ptr += nread;

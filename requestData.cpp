@@ -125,31 +125,42 @@ void requestData::handleRequest()
 {
     char buff[MAX_BUFF];
     bool isError = false;
+    sleep(5);
     while (true)
     {
         int read_num = readn(fd, buff, MAX_BUFF);
         if (read_num < 0)
         {
-            perror("1");
+            perror("error:1");
             isError = true;
             break;
         }
         else if (read_num == 0)
         {
             // 有请求出现但是读不到数据，可能是Request Aborted，或者来自网络的数据没有达到等原因
+            /*comments from dyj:
+            * 当read()函数返回值为0时，表示对端已经关闭了 socket，这时候也要关闭这个socket，
+            * 否则会导致socket泄露。netstat命令查看下，如果有closewait状态的socket,就是socket泄露了
+            * */
             perror("read_num == 0");
             if (errno == EAGAIN)
             {
+                cout<<"again!"<<againTimes<<endl;
                 if (againTimes > AGAIN_MAX_TIMES)
                     isError = true;
                 else
                     ++againTimes;
             }
-            else if (errno != 0)
+            // else if (errno != 0)
+            //     isError = true;
+            else{
+                printf("这个socket已经被对方关闭\n");
                 isError = true;
+            }
             break;
         }
         string now_read(buff, buff + read_num);
+        cout<<now_read<<endl;
         content += now_read;
 
         if (state == STATE_PARSE_URI)
@@ -245,7 +256,9 @@ void requestData::handleRequest()
             return;
         }
     }
-    // 一定要先加时间信息，否则可能会出现刚加进去，下个in触发来了，然后分离失败后，又加入队列，最后超时被删，然后正在线程中进行的任务出错，double free错误。
+    /* 一定要先加时间信息，否则可能会出现刚加进去，下个in触发来了，然后分离失败后，
+     * 又加入队列，最后超时被删，然后正在线程中进行的任务出错，double free错误。
+     * */
     // 新增时间信息
     pthread_mutex_lock(&qlock);
     mytimer *mtimer = new mytimer(this, 500);
@@ -253,6 +266,7 @@ void requestData::handleRequest()
     myTimerQueue.push(mtimer);
     pthread_mutex_unlock(&qlock);
 
+    sleep(3);
     __uint32_t _epo_event = EPOLLIN | EPOLLET | EPOLLONESHOT;
     int ret = epoll_mod(epollfd, fd, static_cast<void*>(this), _epo_event);
     if (ret < 0)
@@ -582,10 +596,11 @@ void requestData::handleError(int fd, int err_num, string short_msg)
 
 mytimer::mytimer(requestData *_request_data, int timeout): deleted(false), request_data(_request_data)
 {
-    //cout << "mytimer()" << endl;
     struct timeval now;
     gettimeofday(&now, NULL);
+    
     // 以毫秒计
+    // 秒和微秒
     expired_time = ((now.tv_sec * 1000) + (now.tv_usec / 1000)) + timeout;
 }
 

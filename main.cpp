@@ -29,8 +29,8 @@ const string PATH = "/";
 const int TIMER_TIME_OUT = 500;
 
 
-extern pthread_mutex_t qlock;
-extern struct epoll_event* events;
+extern pthread_mutex_t qlock; //defination in requestData.cpp
+extern struct epoll_event* events;  //defination in epoll.cpp
 void acceptConnection(int listen_fd, int epoll_fd, const string &path);
 
 extern priority_queue<mytimer*, deque<mytimer*>, timerCmp> myTimerQueue;
@@ -125,9 +125,10 @@ void acceptConnection(int listen_fd, int epoll_fd, const string &path)
 
         requestData *req_info = new requestData(epoll_fd, accept_fd, path);
 
-        // 文件描述符可以读，边缘触发(Edge Triggered)模式，保证一个socket连接在任一时刻只被一个线程处理
+        // 文件描述符可以读，快照（EPOLLONESHOT)模式和边缘触发(Edge Triggered)模式，保证一个socket连接在任一时刻只被一个线程处理
         __uint32_t _epo_event = EPOLLIN | EPOLLET | EPOLLONESHOT;
         epoll_add(epoll_fd, accept_fd, static_cast<void*>(req_info), _epo_event);
+        
         // 新增时间信息
         mytimer *mtimer = new mytimer(req_info, TIMER_TIME_OUT);
         req_info->addTimer(mtimer);
@@ -135,22 +136,20 @@ void acceptConnection(int listen_fd, int epoll_fd, const string &path)
         myTimerQueue.push(mtimer);
         pthread_mutex_unlock(&qlock);
     }
-    //if(accept_fd == -1)
-     //   perror("accept");
 }
 // 分发处理函数
 void handle_events(int epoll_fd, int listen_fd, struct epoll_event* events, int events_num, const string &path, threadpool_t* tp)
 {
     for(int i = 0; i < events_num; i++)
     {
-        // 获取有事件产生的描述符
+        printf("分配任务了。。。\n");
+        // 获取有事件产生的描述符, events[i].data是union
         requestData* request = (requestData*)(events[i].data.ptr);
         int fd = request->getFd();
-
+        cout<<"事件描述符！"<<fd<<endl;
         // 有事件发生的描述符为监听描述符
         if(fd == listen_fd)
         {
-            //cout << "This is listen_fd" << endl;
             acceptConnection(listen_fd, epoll_fd, path);
         }
         else
@@ -168,6 +167,10 @@ void handle_events(int epoll_fd, int listen_fd, struct epoll_event* events, int 
             // 加入线程池之前将Timer和request分离
             request->seperateTimer();
             int rc = threadpool_add(tp, myHandler, events[i].data.ptr, 0);
+
+            if(rc<0){
+                perror("threadpool_add failure!\n");
+            }
         }
     }
 }
@@ -230,26 +233,37 @@ int main()
         perror("socket bind failed");
         return 1;
     }
+    /*comments from dyj:
+    * 设置listen_fd非阻塞
+    * 为什么需要这样设置？
+    * epoll当有通知来的时候，若是listen_fd的数据，那么显然阻塞与不阻塞都无所谓。
+    * 但是，如果出现这样的一种情况，当accept结束之前，客户端结束连接，那么accept就会阻塞，
+    * 影响服务器效率
+    * */
     if (setSocketNonBlocking(listen_fd) < 0)
     {
         perror("set socket non block failed");
         return 1;
     }
+
+     /*comments from dyj:
+     * 设置为读事件和ET工作模式
+     * */
     __uint32_t event = EPOLLIN | EPOLLET;
     requestData *req = new requestData();
+
+    /*comments from dyj:
+    * 将req和listen_fd联系起来
+    */
     req->setFd(listen_fd);
     epoll_add(epoll_fd, listen_fd, static_cast<void*>(req), event);
     while (true)
     {
         int events_num = my_epoll_wait(epoll_fd, events, MAXEVENTS, -1);
-        //printf("%zu\n", myTimerQueue.size());        
+      
         if (events_num == 0)
             continue;
         printf("%d\n", events_num);
-        //printf("%zu\n", myTimerQueue.size());    
-        // else
-        //     cout << "one connection has come!" << endl;
-        // 遍历events数组，根据监听种类及描述符类型分发操作
         handle_events(epoll_fd, listen_fd, events, events_num, PATH, threadpool);
 
         handle_expired_event();

@@ -18,9 +18,12 @@ int epoll_init()
 int epoll_add(int epoll_fd, int fd, void *request, __uint32_t events)
 {
     struct epoll_event event;
-    event.data.ptr = request;
+    /*comments from dyj:
+    * event和req结合起来
+    */
+    event.data.ptr = request; 
     event.events = events;
-    //printf("add to epoll %d\n", fd);
+
     if(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) < 0)
     {
         perror("epoll_add error");
@@ -63,7 +66,7 @@ int my_epoll_wait(int epoll_fd, struct epoll_event* events, int max_events, int 
     int ret_count = epoll_wait(epoll_fd, events, max_events, timeout);
     if (ret_count < 0)
     {
-        perror("epoll wait error");
+        perror("....epoll wait error");
     }
     return ret_count;
 }

@@ -58,10 +58,9 @@ threadpool_t *threadpool_create(int thread_count, int queue_size, int flags)
 
 int threadpool_add(threadpool_t *pool, void (*function)(void *), void *argument, int flags)
 {
-    //printf("add to thread pool !\n");
     int err = 0;
     int next;
-    //(void) flags;
+
     if(pool == NULL || function == NULL)
     {
         return THREADPOOL_INVALID;
@@ -105,7 +104,7 @@ int threadpool_add(threadpool_t *pool, void (*function)(void *), void *argument,
 
 int threadpool_destroy(threadpool_t *pool, int flags)
 {
-    printf("Thread pool destroy !\n");
+    printf("Thread pool destroy!\n");
     int i, err = 0;
 
     if(pool == NULL)
@@ -179,7 +178,7 @@ int threadpool_free(threadpool_t *pool)
 }
 
 
-static void *threadpool_thread(void *threadpool)
+void *threadpool_thread(void *threadpool)
 {
     threadpool_t *pool = (threadpool_t *)threadpool;
     threadpool_task_t task;
@@ -193,6 +192,7 @@ static void *threadpool_thread(void *threadpool)
            When returning from pthread_cond_wait(), we own the lock. */
         while((pool->count == 0) && (!pool->shutdown)) 
         {
+            //三个过程，解锁，等待条件信号，加锁
             pthread_cond_wait(&(pool->notify), &(pool->lock));
         }
 
